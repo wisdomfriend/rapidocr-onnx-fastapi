@@ -1,0 +1,43 @@
+services:
+  ocr-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - OCR_PORT=${OCR_PORT:-7850}
+    container_name: ocr-service
+    ports:
+      - "${OCR_PORT:-7850}:${OCR_PORT:-7850}"
+    environment:
+      - TZ=Asia/Shanghai
+      - OCR_PORT=${OCR_PORT:-7850}
+      - OCR_HOST=0.0.0.0
+      - OCR_WORK_COUNT=4
+      - OCR_USE_GPU=false
+      - OCR_LOG_LEVEL=INFO
+      - OCR_RELOAD=false
+    volumes:
+      # Mount logs directory
+      - ./logs:/app/logs
+      # Mount uploads directory (if needed)
+      - ./uploads:/app/uploads
+      # Mount model files (if you want to use external models)
+      # - ./rapidocr_onnxruntime_run/models:/app/rapidocr_onnxruntime_run/models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "OCR_PORT=${OCR_PORT:-7850}; python -c \"import requests; requests.get('http://localhost:${OCR_PORT}/health', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ocr-network
+      - nginx-network  # 添加到 nginx 网络，以便 nginx 可以通过容器名访问
+
+networks:
+  ocr-network:
+    driver: bridge
+  nginx-network:  # 外部网络，连接到 nginx-shop 项目的网络
+    external: true
+    name: pengfei_nginx-network
+
